@@ -1,4 +1,4 @@
-import {LayoutRoot} from "@localizesh/sdk";
+import {LayoutElement, LayoutRoot} from "@localizesh/sdk";
 
 type StringsRecord = {
   [key: string]: {
@@ -7,12 +7,12 @@ type StringsRecord = {
   }
 }
 
-function parseStringToObject(input: string, isComments = true): StringsRecord {
+function parseStringToObject(input: string, isComments = true): StringsRecord[] {
     const reAssign = /[^\\]" = "/;
     const reLineEnd = /";$/;
     const reCommentEnd = /\*\/$/;
 
-    let result: StringsRecord = {};
+    let result: StringsRecord[] = [];
     const lines = input.split("\n");
 
     let currentComment = '';
@@ -91,7 +91,7 @@ function parseStringToObject(input: string, isComments = true): StringsRecord {
       keyString = keyString.replace(/\\n/g, "\n");
       valueString = valueString.replace(/\\n/g, "\n");
       if (!isComments) {
-        return result = {...result, ...{[keyString]: valueString} as unknown as StringsRecord};
+         result = [...result, {[keyString]: valueString} as unknown as StringsRecord];
       } else {
         val = {
           'text': valueString
@@ -100,7 +100,7 @@ function parseStringToObject(input: string, isComments = true): StringsRecord {
           val['comment'] = currentComment;
           currentComment = '';
         }
-        return result = {...result, ...{[keyString]: val} as StringsRecord};
+        result = [...result, {[keyString]: val} as StringsRecord];
       }
     });
     return result;
@@ -112,9 +112,71 @@ const hastToString = (rootHast: LayoutRoot) => {
 }
 
 const stringToHast = (rootString: string) => {
-  const object: StringsRecord = parseStringToObject(rootString);
+  const values: StringsRecord[] = parseStringToObject(rootString);
 
-  return {type: "root", children: []} as LayoutRoot;
+  const children = values.reduce((accum: LayoutElement[], stringsValue) => {
+    const key = Object.keys(stringsValue)[0];
+    const {text, comment} = stringsValue[key];
+
+    const hastValues = [
+      {
+        type: "element",
+        tagName: "tr",
+        children: [
+          {
+            type: "element",
+            tagName: "td",
+            children: [
+              {type: "text", value: comment}
+            ],
+            properties: {},
+          }
+        ],
+        properties: {},
+      },
+      {
+        type: "element",
+        tagName: "tr",
+        children: [
+          {
+            type: "element",
+            tagName: "td",
+            children: [
+              {type: "text", value: key}
+            ],
+            properties: {},
+          },
+          {
+            type: "element",
+            tagName: "td",
+            children: [
+              {type: "text", value: text}
+            ],
+            properties: {},
+          },
+        ],
+        properties: {},
+      }
+    ];
+    accum = [...accum, ...hastValues] as LayoutElement[];
+    return accum;
+  }, [])
+
+  return {type: "root", children: [
+      {
+        type: "element",
+        tagName: "table",
+        children: [
+          {
+            type: "element",
+            tagName: "tbody",
+            children: children,
+            properties: {},
+          },
+        ],
+        properties: {},
+      }
+    ]} as LayoutRoot;
 }
 
 const strings: {
