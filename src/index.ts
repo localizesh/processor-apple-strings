@@ -3,11 +3,13 @@ import strings from "./utils.js";
 
 class StringsProcessor implements Processor {
   parse(res: string, ctx?: Context): Document {
-    const ast: LayoutRoot = strings.stringToHast(res);
+    const hast: LayoutRoot = strings.stringToHast(res);
 
-    return strings.hastToDocument(ast, ctx);
+    return strings.hastToDocument(hast, ctx);
   }
-  stringify(data: Document, ctx?: Context): string {
+  stringify(document: Document, ctx?: Context): string {
+    const hast = strings.documentToHast(document, ctx);
+
     return "";
   }
 }

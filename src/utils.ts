@@ -1,6 +1,10 @@
 import {Context, Document, IdGenerator, LayoutElement, LayoutRoot, Segment} from "@localizesh/sdk";
 import {visitParents} from "unist-util-visit-parents";
 
+type SegmentsMap = {
+  [id: string]: Segment;
+};
+
 type StringsRecord = {
   [key: string]: {
     text: string,
@@ -211,18 +215,33 @@ const hastToDocument = (hastRoot: any, ctx: Context): Document => {
   return {segments, layout: hastRoot}
 }
 
-const documentToHast = (document: Document): any => {
+const documentToHast = (document: Document): LayoutRoot => {
+  const {layout, segments} = document;
 
+  const segmentsMap: SegmentsMap = {};
+
+  segments.forEach((segment: Segment): void => {
+    segmentsMap[segment.id] = segment;
+  });
+
+  visitParents(layout, "segment", (node: any, parent) => {
+      const currentParent = parent[parent.length - 1];
+      currentParent.children = [{type: "text", value: segmentsMap[node.id].text}];
+    }
+  )
+  return layout;
 }
 
 const strings: {
-  hastToString: (rootHast: LayoutRoot) => string;
   stringToHast: (rootString: string) => LayoutRoot;
   hastToDocument: (hastRoot: any, ctx: Context) => Document;
+  documentToHast: (document: Document, ctx: Context) => LayoutRoot;
+  hastToString: (rootHast: LayoutRoot) => string;
 } = {
-  hastToString,
   stringToHast,
   hastToDocument,
+  documentToHast,
+  hastToString,
 };
 
 export default strings;

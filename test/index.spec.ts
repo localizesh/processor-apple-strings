@@ -12,16 +12,16 @@ function processAndCompare(filename: string) {
 
   const doc = processor.parse(inDoc);
 
-  /*
  const docStr = JSON.stringify(doc);
 
- const outDoc = processor.stringify(doc);
- const outDocStructure = processor.parse(outDoc);
- const outDocStructureStr = JSON.stringify(outDocStructure);
+const outDoc = processor.stringify(doc);
+  /*
+const outDocStructure = processor.parse(outDoc);
+const outDocStructureStr = JSON.stringify(outDocStructure);
 
- assert.equal(outDocStructureStr, docStr);
- console.log(filename);
-  */
+assert.equal(outDocStructureStr, docStr);
+console.log(filename);
+ */
 }
 
 describe('YamlProcessorTest', function() {
