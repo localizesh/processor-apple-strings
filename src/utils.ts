@@ -1,4 +1,5 @@
-import {LayoutElement, LayoutRoot} from "@localizesh/sdk";
+import {Context, Document, IdGenerator, LayoutElement, LayoutRoot, Segment} from "@localizesh/sdk";
+import {visitParents} from "unist-util-visit-parents";
 
 type StringsRecord = {
   [key: string]: {
@@ -127,9 +128,9 @@ const stringToHast = (rootString: string) => {
             type: "element",
             tagName: "td",
             children: [
-              {type: "text", value: comment}
+              {type: "comment", value: comment}
             ],
-            properties: {},
+            properties: {colspan:"2"},
           }
         ],
         properties: {},
@@ -179,12 +180,49 @@ const stringToHast = (rootString: string) => {
     ]} as LayoutRoot;
 }
 
+const hastToDocument = (hastRoot: any, ctx: Context): Document => {
+  const idGenerator: IdGenerator = new IdGenerator();
+  const segments: Segment[] = [];
+
+  const setSegment = (text: string): string => {
+    const id: string = idGenerator.generateId(text, {}, ctx);
+    const segment = {text, id};
+    segments.push(segment);
+    return id;
+  }
+
+  visitParents(hastRoot, (node: any) =>
+    "tagName" in node && node?.tagName === "tr", (node) => {
+
+      if ("children" in node) {
+        const td = node.children[1];
+
+        if (td && "children" in td && td.children[0].type === "text") {
+          const textTypeNode = td.children[0];
+          const segmentId = setSegment(textTypeNode.value);
+
+          const layoutSegment = {type: "segment", id: segmentId};
+          td.children.splice(0, 1, layoutSegment);
+        }
+      }
+    }
+  )
+
+  return {segments, layout: hastRoot}
+}
+
+const documentToHast = (document: Document): any => {
+
+}
+
 const strings: {
   hastToString: (rootHast: LayoutRoot) => string;
   stringToHast: (rootString: string) => LayoutRoot;
+  hastToDocument: (hastRoot: any, ctx: Context) => Document;
 } = {
   hastToString,
   stringToHast,
+  hastToDocument,
 };
 
 export default strings;
