@@ -1,0 +1,5 @@
+/* Our app name */
+"AppName" = "Lokalize";
+
+/* User login dialog */
+"EnterUsername" = "Enter your username";
