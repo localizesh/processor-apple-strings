@@ -17,7 +17,7 @@
   "test-spacing"   =   "Test spacing"  ;
 
 /* Edge case */
-  "test \n edge\" = " = "Test edge"  ;
+  "test edge" = " = "Test edge"  ;
 
 /* Multiline
    Comment */

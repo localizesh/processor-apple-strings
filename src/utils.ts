@@ -112,8 +112,48 @@ function parseStringToObject(input: string, isComments = true): StringsRecord[] 
 }
 
 
-const hastToString = (rootHast: LayoutRoot) => {
-  return "";
+const hastToString = (rootHast: LayoutRoot): string => {
+
+  const hastToObjectsRecursive = (layoutElement: any) => {
+
+    if("tagName" in layoutElement && layoutElement.tagName === "tbody") {
+      return layoutElement.children.reduce((acc: StringsRecord[], child: any, index: number) => {
+        const isEven = index % 2 === 0;
+        if (isEven) {
+          const comment = child.children[0]?.children[0]?.value || "";
+          const nextTr = layoutElement?.children[index + 1];
+          if (nextTr) {
+            const key = nextTr.children[0]?.children[0]?.value;
+            const text = nextTr.children[1]?.children[0]?.value;
+            acc.push({[key]: {text, comment}});
+          }
+        }
+        return acc;
+      }, [])
+    }
+
+    if("children" in layoutElement) {
+      for (let child of layoutElement.children) {
+        return hastToObjectsRecursive(child);
+      }
+    }
+  }
+
+  const stringsObjects: StringsRecord[] = hastToObjectsRecursive(rootHast);
+
+  const stringsObjectsToStr = (stringsObjects: StringsRecord[]): string => {
+
+    return stringsObjects.reduce((acc: string, stringsObj: StringsRecord, index: number) => {
+      let key = Object.keys(stringsObj)[0];
+      let {text, comment} = stringsObj[key];
+      const isLast = index === stringsObjects.length - 1;
+
+      acc += `/* ${comment} */\n"${key}" = "${text}";${isLast ? "\n" : "\n\n"}`;
+      return acc;
+    }, "")
+  }
+
+  return stringsObjectsToStr(stringsObjects);
 }
 
 const stringToHast = (rootString: string) => {
