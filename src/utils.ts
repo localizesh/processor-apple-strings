@@ -163,6 +163,8 @@ const stringToHast = (rootString: string) => {
     const key = Object.keys(stringsValue)[0];
     const {text, comment} = stringsValue[key];
 
+    const commentRowStyles = {display: "none"};
+
     const hastValues = [
       {
         type: "element",
@@ -177,7 +179,7 @@ const stringToHast = (rootString: string) => {
             properties: {colspan:"2"},
           }
         ],
-        properties: {},
+        properties: {style: commentRowStyles},
       },
       {
         type: "element",
