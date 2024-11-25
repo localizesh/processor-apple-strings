@@ -1,6 +1,6 @@
 {
-  "name": "@localizesh/processor-strings",
-  "repository": "localizesh/processor-strings",
+  "name": "@localizesh/processor-apple-strings",
+  "repository": "localizesh/processor-apple-strings",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
