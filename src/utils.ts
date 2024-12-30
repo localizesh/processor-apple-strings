@@ -5,14 +5,17 @@ type SegmentsMap = {
   [id: string]: Segment;
 };
 
-type StringsRecord = {
-  [key: string]: {
-    text: string,
-    comment: string
-  }
+export enum HastTypeNames {
+  root = 'root',
+  element = "element",
+  text = "text",
+  comment = "comment",
+  doctype = "doctype"
 }
 
-function parseStringToObject(input: string, isComments = true): StringsRecord[] {
+type StringsRecord = {key: string, value: string} | {comment: string}
+
+function parseStringToObject(input: string): StringsRecord[] {
     const reAssign = /[^\\]" = "/;
     const reLineEnd = /";$/;
     const reCommentEnd = /\*\/$/;
@@ -27,7 +30,7 @@ function parseStringToObject(input: string, isComments = true): StringsRecord[] 
     let nextLineIsValue = false;
 
     lines.forEach((line) => {
-      let val: {[key: string]: string} = {};
+
       line = line.trim();
       line = line.replace(/([^\\])("\s*=\s*")/g, "$1\" = \"");
       line = line.replace(/"\s+;/g, '";');
@@ -95,18 +98,13 @@ function parseStringToObject(input: string, isComments = true): StringsRecord[] 
       valueString = valueString.replace(/\\"/g, "\"");
       keyString = keyString.replace(/\\n/g, "\n");
       valueString = valueString.replace(/\\n/g, "\n");
-      if (!isComments) {
-         result = [...result, {[keyString]: valueString} as unknown as StringsRecord];
-      } else {
-        val = {
-          'text': valueString
-        };
-        if (currentComment) {
-          val['comment'] = currentComment;
-          currentComment = '';
-        }
-        result = [...result, {[keyString]: val} as StringsRecord];
+
+      if (currentComment) {
+        result = [...result, {comment: currentComment} as StringsRecord];
+        currentComment = '';
       }
+      result = [...result, {value: valueString, key: keyString} as unknown as StringsRecord];
+
     });
     return result;
 }
@@ -118,15 +116,15 @@ const hastToString = (rootHast: LayoutRoot): string => {
 
     if("tagName" in layoutElement && layoutElement.tagName === "tbody") {
       return layoutElement.children.reduce((acc: StringsRecord[], child: any, index: number) => {
-        const isEven = index % 2 === 0;
-        if (isEven) {
+
+        const nodeType = child.children[0]?.children[0]?.type;
+        if(nodeType === HastTypeNames.comment) {
           const comment = child.children[0]?.children[0]?.value || "";
-          const nextTr = layoutElement?.children[index + 1];
-          if (nextTr) {
-            const key = nextTr.children[0]?.children[0]?.value;
-            const text = nextTr.children[1]?.children[0]?.value;
-            acc.push({[key]: {text, comment}});
-          }
+          acc.push({comment: comment});
+        } else {
+          const key = child.children[0]?.children[0]?.value;
+          const value = child.children[1]?.children[0]?.value;
+          acc.push({key, value});
         }
         return acc;
       }, [])
@@ -144,11 +142,15 @@ const hastToString = (rootHast: LayoutRoot): string => {
   const stringsObjectsToStr = (stringsObjects: StringsRecord[]): string => {
 
     return stringsObjects.reduce((acc: string, stringsObj: StringsRecord, index: number) => {
-      let key = Object.keys(stringsObj)[0];
-      let {text, comment} = stringsObj[key];
       const isLast = index === stringsObjects.length - 1;
 
-      acc += `/* ${comment} */\n"${key}" = "${text}";${isLast ? "\n" : "\n\n"}`;
+      if("comment" in stringsObj) {
+        acc += `${!!index ? "\n" : ""}/* ${stringsObj.comment} */\n`;
+      } else {
+        if("value" in stringsObj && "key" in stringsObj)
+        acc += `"${stringsObj.key}" = "${stringsObj.value}";${isLast ? "" : "\n"}`;
+      }
+
       return acc;
     }, "")
   }
@@ -159,63 +161,70 @@ const hastToString = (rootHast: LayoutRoot): string => {
 const stringToHast = (rootString: string) => {
   const values: StringsRecord[] = parseStringToObject(rootString);
 
-  const children = values.reduce((accum: LayoutElement[], stringsValue) => {
-    const key = Object.keys(stringsValue)[0];
-    const {text, comment} = stringsValue[key];
+  const children = values.reduce((accum: LayoutElement[], stringsValue: StringsRecord) => {
 
-    const commentRowStyles = {display: "none"};
+    if("key" in stringsValue && "value" in stringsValue) {
+      const {key, value} = stringsValue;
 
-    const hastValues = [
-      {
-        type: "element",
+      const hastValues: LayoutElement =
+        {
+          type: HastTypeNames.element,
+          tagName: "tr",
+          children: [
+            {
+              type: HastTypeNames.element,
+              tagName: "td",
+              children: [
+                {type: HastTypeNames.text, value: key}
+              ],
+              properties: {},
+            },
+            {
+              type: HastTypeNames.element,
+              tagName: "td",
+              children: [
+                {type: HastTypeNames.text, value}
+              ],
+              properties: {},
+            },
+          ],
+          properties: {},
+        }
+
+      accum.push(hastValues);
+    }
+
+    if("comment" in stringsValue) {
+
+      const commentRowLayoutElement: LayoutElement = {
+        type: HastTypeNames.element,
         tagName: "tr",
         children: [
           {
-            type: "element",
+            type: HastTypeNames.element,
             tagName: "td",
             children: [
-              {type: "comment", value: comment}
+              {type: HastTypeNames.comment, value: stringsValue.comment}
             ],
             properties: {colspan:"2"},
           }
         ],
-        properties: {style: commentRowStyles},
-      },
-      {
-        type: "element",
-        tagName: "tr",
-        children: [
-          {
-            type: "element",
-            tagName: "td",
-            children: [
-              {type: "text", value: key}
-            ],
-            properties: {},
-          },
-          {
-            type: "element",
-            tagName: "td",
-            children: [
-              {type: "text", value: text}
-            ],
-            properties: {},
-          },
-        ],
-        properties: {},
+        properties: {style: {display: "none"}} as {},
       }
-    ];
-    accum = [...accum, ...hastValues] as LayoutElement[];
+
+      accum.push(commentRowLayoutElement);
+    }
+
     return accum;
   }, [])
 
-  return {type: "root", children: [
+  return {type: HastTypeNames.root, children: [
       {
-        type: "element",
+        type: HastTypeNames.element,
         tagName: "table",
         children: [
           {
-            type: "element",
+            type: HastTypeNames.element,
             tagName: "tbody",
             children: children,
             properties: {},
@@ -243,7 +252,7 @@ const hastToDocument = (hastRoot: any, ctx: Context): Document => {
       if ("children" in node) {
         const td = node.children[1];
 
-        if (td && "children" in td && td.children[0].type === "text") {
+        if (td && "children" in td && td.children[0].type === HastTypeNames.text) {
           const textTypeNode = td.children[0];
           const segmentId = setSegment(textTypeNode.value);
 
@@ -268,7 +277,7 @@ const documentToHast = (document: Document): LayoutRoot => {
 
   visitParents(layout, "segment", (node: any, parent) => {
       const currentParent = parent[parent.length - 1];
-      currentParent.children = [{type: "text", value: segmentsMap[node.id].text}];
+      currentParent.children = [{type: HastTypeNames.text, value: segmentsMap[node.id].text}];
     }
   )
   return layout;
