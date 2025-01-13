@@ -44,7 +44,7 @@ function parseStringToObject(input: string): StringsRecord[] {
           currentComment += '\n' + line.substring(0, line.search(reCommentEnd)).trim();
           return;
         }
-      } else if (line.substring(0, 2) === '//') {
+      } else if (line.substring(0, 2) === '//' || line.substring(0, 1) === '#') {
         currentComment = line.substring(2).trim();
         return;
       } else if (line.substring(0, 2) === '/*' && !nextLineIsValue) {
@@ -61,6 +61,10 @@ function parseStringToObject(input: string): StringsRecord[] {
       let keyString = '';
       let valueString = '';
       if (line === '' && !nextLineIsValue) {
+        if (currentComment) {
+          result = [...result, {comment: currentComment} as StringsRecord];
+          currentComment = '';
+        }
         return;
       }
 

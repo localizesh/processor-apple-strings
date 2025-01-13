@@ -14,6 +14,7 @@ function processAndCompare(filename: string) {
   const docStr = JSON.stringify(doc);
 
   const outDoc = processor.stringify(doc);
+  debugger
   const outDocStructure = processor.parse(outDoc);
 
   const outDocStructureStr = JSON.stringify(outDocStructure);
@@ -27,6 +28,7 @@ describe('YamlProcessorTest', function() {
     processAndCompare('typical.strings');
     processAndCompare('test.strings');
     processAndCompare('sections.strings');
+    processAndCompare('comments.strings');
   });
 });
 
